@@ -4,17 +4,19 @@
 # Date:		1/26/14
 # Author: 	Andrew Martin <amartin@avidandrew.com>
 # Depend: 	Y: drive in wine prefix must point to / (root of linux filesystem)
-# 		lib32-lcms wine
+# 		lib32-lcms zenity wine
 ###############################################################################
 export WINEPREFIX=/path/to/your/wine/prefix
 export PHOTOSHOP_VERSION=5.1
+RAW_FILETYPE_UPPERCASE=CR2
+RAW_FILETYPE_LOWERCASE=$(echo "$RAW_FILETYPE_UPPERCASE" | tr '[:upper:]' '[:lower:]')
 file="$1"		# the file to open in Photoshop
 debug=0			# set to 1 to enable debug output to $debug_log
 debug_log=/tmp/debug	# path to the debug log file
 
 # Zenity menu options
-cr2xmp="CR2 + XMP"
-cr2="CR2"
+cr2xmp="$RAW_FILETYPE_UPPERCASE + XMP"
+cr2="$RAW_FILETYPE_UPPERCASE"
 tiff="TIFF"
 
 # Write the header to the specified file
@@ -25,7 +27,7 @@ cat << EOF > $1
  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
   <rdf:Description rdf:about=""
     xmlns:photoshop="http://ns.adobe.com/photoshop/1.0/">
-   <photoshop:SidecarForExtension>CR2</photoshop:SidecarForExtension>
+   <photoshop:SidecarForExtension>$RAW_FILETYPE_UPPERCASE</photoshop:SidecarForExtension>
   </rdf:Description>
   <rdf:Description rdf:about=""
     xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/">
@@ -54,7 +56,7 @@ function log() {
 
 # gets the value from inside the ASP tag
 # $1 name of ASP attribute
-# $2 ASP cr2 file (source)
+# $2 ASP raw file (source)
 function getXMPValue() {
 	grep -oPm1 "(?<=bopt:$1=\")[^\"]+" $2
 }
@@ -119,15 +121,15 @@ if [ $# -gt 0 ]; then
 	chosen=$(zenity --height=275 --list --radiolist --text 'Select the format to transfer to Photoshop:' --column 'Select...' --column 'Image Format' TRUE "$cr2xmp" FALSE "$cr2" FALSE "$tiff")
 	if [ "$chosen" == "$cr2xmp" ] || [ "$chosen" == "$cr2" ]; then
 		cr2found=0
-		log "try to use CR2 instead of TIFF"
-		cr2file=$(readlink -f "$file" | sed 's/_edit.*\.tif$/\.cr2/g')
+		log "try to use $RAW_FILETYPE_UPPERCASE instead of TIFF"
+		cr2file=$(readlink -f "$file" | sed "s/_edit.*\.tif$/\.$RAW_FILETYPE_LOWERCASE/g")
 		if [ ! -f "$cr2file" ]; then
-			log "lowercase cr2 file $cr2file doesn't exist, try the uppercase version"
-			cr2file=$(echo "$cr2file" | sed 's/cr2$/CR2/g')
+			log "lowercase $RAW_FILETYPE_LOWERCASE file $cr2file doesn't exist, try the uppercase version"
+			cr2file=$(echo "$cr2file" | sed "s/$RAW_FILETYPE_LOWERCASE/$RAW_FILETYPE_UPPERCASE/g")
 
 			if [ ! -f "$cr2file" ]; then
-				log "can't find CR2 either ($cr2file), opening TIFF instead"
-				zenity --error --text="Can't find the CR2 file, opening TIFF instead..." --title='Error: Cannot Find CR2'
+				log "can't find $RAW_FILETYPE_UPPERCASE either ($cr2file), opening TIFF instead"
+				zenity --error --text="Can't find the $RAW_FILETYPE_UPPERCASE file, opening TIFF instead..." --title='Error: Cannot Find $RAW_FILETYPE_UPPERCASE'
 			else
 				cr2found=1
 			fi
@@ -188,7 +190,7 @@ if [ $# -gt 0 ]; then
 			fi
 
 			# remove the tiff file
-			log "CR2 found ($cr2file), removing the tiff ($file)"
+			log "$RAW_FILETYPE_UPPERCASE found ($cr2file), removing the tiff ($file)"
 			rm -f "$file"
 			file="$cr2file"
 		fi
